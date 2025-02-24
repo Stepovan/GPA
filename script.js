@@ -1,7 +1,7 @@
 // Глобальные параметры
 let parameters = {
-    P1: 0,  // Давление для крана 1
-    P2: 0,  // Давление для крана 2
+    P1: 1,  // Давление для крана 1
+    P2: 0,
     p_ukpg: 5.2,  // Целевое давление
 };
 
@@ -15,13 +15,16 @@ let imageClosed = 'img/Valve-closed.png',
 
 // Массив с кранами
 const valves = [
-    { number: '1', x: 503, y: 54, state: 'open', angle: 90, motor: true, time_open: 2, fromParam:"p_ukpg", toParam: "P1" },
-    { number: '4', x: 539, y: 54, state: 'closed', angle: 90, motor: true, time_open: 2, fromParam:"p_ukpg", toParam: "P1"}
+    { number: '1', x: 503, y: 54, state: 'closed', angle: 90, motor: true, time_open: 2, fromParam:"p_ukpg", toParam: "P1", duration: 2},
+    { number: '4', x: 539, y: 54, state: 'closed', angle: 90, motor: true, time_open: 2, fromParam:"p_ukpg", toParam: "P1", duration: 5},
+    { number: '2', x: 600, y: 54, state: 'closed', angle: 90, motor: true, time_open: 2, fromParam:"p_ukpg", toParam: "P2", duration: 5},
+
 ];
 
 // Массив с текстбоксами
 const textBoxes = [
     { number: '1', x: 500, y: 100, startValue: 0.00, lisParam: "P1"}, // Текстбокс для P1
+    { number: '2', x: 600, y: 100, startValue: 0.00, lisParam: "P2"}, // Текстбокс для P1
 ];
 
 // Функция создания SCADA-контейнера и фона
@@ -124,9 +127,7 @@ function toggleValve(index) {
 
             // Обновляем глобальный параметр, если кран открыт
             if (valveData.state === 'open') {
-                parameters[`P${valveData.number}`] = parameters.p_ukpg;
-            } else {
-                parameters[`P${valveData.number}`] = 0;
+                smoothChange(valveData.toParam, parameters[`${valveData.fromParam}`], valveData.duration)
             }
         }, valveData.time_open * 1000);
     } else {
@@ -136,23 +137,40 @@ function toggleValve(index) {
 
         // Обновляем глобальный параметр, если кран открыт
         if (valveData.state === 'open') {
-            parameters[`P${valveData.toParam}`] = parameters[`P${valveData.fromParam}`];
-        } else {
-            parameters[`P${valveData.toParam}`] = 0;
+            parameters[`${valveData.toParam}`] = parameters[`${valveData.fromParam}`];
         }
     }
 }
-
 // Функция для обновления значений в текстовых полях
 function updatePressureTextBoxes() {
     textBoxes.forEach((boxData) => {
         const pressureBox = document.getElementById(`pressureTextBox_${boxData.number}`);
         if (pressureBox) {
             // Обновляем текстовое поле значением из глобального параметра
-            pressureBox.value = parameters[`${boxData.lisParam}`].toFixed(1);
+            pressureBox.value = parameters[`${boxData.lisParam}`];
         }
     });
 }
+
+function smoothChange(paramName, targetValue, duration) {
+    const startValue = parameters[paramName]; // Текущее значение параметра
+    const stepTime = 5; // Интервал обновления (мс)
+    const steps = duration * 1000 / stepTime; // Количество шагов
+    const stepSize = (targetValue - startValue) / steps; // Размер шага
+
+    let currentStep = 0;
+
+    const interval = setInterval(() => {
+        currentStep++;
+        parameters[paramName] += stepSize;
+
+        if (currentStep >= steps) {
+            parameters[paramName] = targetValue; // Устанавливаем точное значение
+            clearInterval(interval); // Останавливаем анимацию
+        }
+    }, stepTime);
+}
+
 
 // Регулярное обновление значений
 setInterval(updatePressureTextBoxes, 500);  // Каждые 500 мс обновляем значения
