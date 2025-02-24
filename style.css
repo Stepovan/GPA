@@ -1,0 +1,65 @@
+/* Общие стили для страницы */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+    overflow: hidden;
+}
+
+/* Стили контейнера SCADA */
+.scada-container {
+    position: relative;
+    width: 1000px; /* Фиксированная ширина */
+    height: 600px; /* Фиксированная высота */
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* Стили для крана */
+.valve {
+    position: absolute;
+    cursor: pointer;
+    height: 12px; /* Высота крана */
+}
+
+/* Стили для мотора */
+.motor {
+    position: absolute;
+    height: 11px; /* Высота мотора */
+    cursor: pointer;
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Анимации для мотора */
+.motor-opening {
+    animation: motorOpening 5s ease-in-out;
+}
+
+.motor-closing {
+    animation: motorClosing 5s ease-in-out;
+}
+
+/* Ключевые кадры для анимаций мотора */
+@keyframes motorOpening {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(90deg);
+    }
+}
+
+@keyframes motorClosing {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(-90deg);
+    }
+}
