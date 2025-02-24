@@ -1,6 +1,6 @@
 // Глобальные параметры
 let parameters = {
-    P1: 1,  // Давление для крана 1
+    P1: 1,
     P2: 0,
     p_ukpg: 5.2,  // Целевое давление
 };
@@ -15,16 +15,15 @@ let imageClosed = 'img/Valve-closed.png',
 
 // Массив с кранами
 const valves = [
-    { number: '1', x: 503, y: 54, state: 'closed', angle: 90, motor: true, time_open: 2, fromParam:"p_ukpg", toParam: "P1", duration: 2},
-    { number: '4', x: 539, y: 54, state: 'closed', angle: 90, motor: true, time_open: 2, fromParam:"p_ukpg", toParam: "P1", duration: 5},
-    { number: '2', x: 600, y: 54, state: 'closed', angle: 90, motor: true, time_open: 2, fromParam:"p_ukpg", toParam: "P2", duration: 5},
-
+    { number: '1', x: 503, y: 54, state: 0, angle: 90, motor: true, time_open: 2, toParam: "P1", grad: 0.4},
+    { number: '4', x: 539, y: 54, state: 0, angle: 90, motor: true, time_open: 2, toParam: "P1", grad: 0.1},
+    { number: '5', x: 758, y: 95, state: 0, angle: 90, motor: true, time_open: 2, toParam: "P2", grad: 0.1},
 ];
 
 // Массив с текстбоксами
 const textBoxes = [
-    { number: '1', x: 500, y: 100, startValue: 0.00, lisParam: "P1"}, // Текстбокс для P1
-    { number: '2', x: 600, y: 100, startValue: 0.00, lisParam: "P2"}, // Текстбокс для P1
+    { number: '1', x: 543, y: 256, startValue: 0.00, lisParam: "P1"}, // Текстбокс для P1
+    { number: '2', x: 600, y: 100, startValue: 0.00, lisParam: "P2"}, // Текстбокс для P2
 ];
 
 // Функция создания SCADA-контейнера и фона
@@ -52,13 +51,15 @@ function createPressureTextBox(boxData) {
     pressureBox.id = `pressureTextBox_${boxData.number}`;
     pressureBox.classList.add('pressure-box');
     pressureBox.style.position = 'absolute';
-    pressureBox.style.width = '40px';
-    pressureBox.style.height = '20px';
+    pressureBox.style.width = '45px';
+    pressureBox.style.height = '12px';
     pressureBox.style.left = `${boxData.x}px`;
     pressureBox.style.top = `${boxData.y}px`;
     pressureBox.style.backgroundColor = 'black';
     pressureBox.style.color = 'green';
-    pressureBox.style.fontSize = '14px';
+    pressureBox.style.fontSize = '12px';
+    pressureBox.style.fontWeight = 'bold';
+    pressureBox.style.fontFamily = 'Arial, sans-serif';
     pressureBox.style.textAlign = 'center';
     pressureBox.style.resize = 'none';
     pressureBox.readOnly = true;  // Текстовое поле доступно только для чтения
@@ -73,7 +74,7 @@ function createValve(valveData, index) {
 
     // Создаем кран
     const valveElement = document.createElement('img');
-    valveElement.src = valveData.state === 'open' ? imageOpen : imageClosed;
+    valveElement.src = valveData.state === 1 ? imageOpen : imageClosed;
     valveElement.classList.add('valve');
     valveElement.style.position = 'absolute';
     valveElement.style.left = `${valveData.x}px`;
@@ -115,65 +116,45 @@ function toggleValve(index) {
     
     if (valveData.motor) {
         // Анимация мотора при изменении состояния
-        motorElement.src = valveData.state === 'open' ? motorClosing : motorOpening;
+        motorElement.src = valveData.state === 1 ? motorClosing : motorOpening;
 
         setTimeout(() => {
             // Меняем состояние крана
-            valveData.state = valveData.state === 'open' ? 'closed' : 'open';
-            valveElement.src = valveData.state === 'open' ? imageOpen : imageClosed;
+            valveData.state = valveData.state === 1 ? 0 : 1;
+            valveElement.src = valveData.state === 1 ? imageOpen : imageClosed;
 
             // Возвращаем мотор в нормальное состояние
             motorElement.src = motorNormal;
 
             // Обновляем глобальный параметр, если кран открыт
-            if (valveData.state === 'open') {
-                smoothChange(valveData.toParam, parameters[`${valveData.fromParam}`], valveData.duration)
-            }
         }, valveData.time_open * 1000);
-    } else {
-        // Если мотора нет, сразу меняем состояние крана
-        valveData.state = valveData.state === 'open' ? 'closed' : 'open';
-        valveElement.src = valveData.state === 'open' ? imageOpen : imageClosed;
-
-        // Обновляем глобальный параметр, если кран открыт
-        if (valveData.state === 'open') {
-            parameters[`${valveData.toParam}`] = parameters[`${valveData.fromParam}`];
-        }
-    }
+    } 
 }
+
 // Функция для обновления значений в текстовых полях
 function updatePressureTextBoxes() {
+    parameters.P1 = Math.max(0, Math.min(parameters.p_ukpg, parameters.P1 + Math.max(VNG("1"), VNG("4")) - VNG("5")));
     textBoxes.forEach((boxData) => {
         const pressureBox = document.getElementById(`pressureTextBox_${boxData.number}`);
         if (pressureBox) {
             // Обновляем текстовое поле значением из глобального параметра
-            pressureBox.value = parameters[`${boxData.lisParam}`];
+            pressureBox.value = parameters[`${boxData.lisParam}`].toFixed(2);
         }
     });
 }
 
-function smoothChange(paramName, targetValue, duration) {
-    const startValue = parameters[paramName]; // Текущее значение параметра
-    const stepTime = 5; // Интервал обновления (мс)
-    const steps = duration * 1000 / stepTime; // Количество шагов
-    const stepSize = (targetValue - startValue) / steps; // Размер шага
-
-    let currentStep = 0;
-
-    const interval = setInterval(() => {
-        currentStep++;
-        parameters[paramName] += stepSize;
-
-        if (currentStep >= steps) {
-            parameters[paramName] = targetValue; // Устанавливаем точное значение
-            clearInterval(interval); // Останавливаем анимацию
-        }
-    }, stepTime);
+// Функция для расчета значения градиента (VNG)
+function VNG(Num) {
+    const valve = valves.find(valve => valve.number === Num);
+    if (!valve) {
+        console.error(`Valve with number ${Num} not found!`);
+        return 0;
+    }
+    return valve.state * valve.grad;
 }
 
-
 // Регулярное обновление значений
-setInterval(updatePressureTextBoxes, 500);  // Каждые 500 мс обновляем значения
+setInterval(updatePressureTextBoxes, 1000);  // Каждые 500 мс обновляем значения
 
 // Создаем SCADA-контейнер и фон
 createScadaBackground();
